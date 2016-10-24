@@ -15,7 +15,9 @@ from drone_video_display import DroneVideoDisplay
 
 # Finally the GUI libraries
 from PySide import QtCore, QtGui
+from threading import Lock
 
+from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
 class KeyMapping(object):
@@ -30,6 +32,7 @@ class KeyMapping(object):
 	Takeoff          = QtCore.Qt.Key.Key_Y
 	Land             = QtCore.Qt.Key.Key_H
 	Emergency        = QtCore.Qt.Key.Key_Space
+	FollowingMode    = QtCore.Qt.Key.Key_T
 
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
@@ -41,6 +44,60 @@ class KeyboardController(DroneVideoDisplay):
 		self.roll = 0
 		self.yaw_velocity = 0 
 		self.z_velocity = 0
+		self.following_mode = 0
+
+		self.tags = []
+		self.tagLock = Lock()
+
+		# Subscribe to the /ardrone/navdata topic, of message type navdata, and call self.ReceiveNavdata when a message is received
+		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata) 
+
+	def ReceiveNavdata(self,navdata):
+		# Indicate that new data has been received (thus we are connected)
+		self.communicationSinceTimer = True
+
+		# Update the message to be displayed
+		msg = self.StatusMessages[navdata.state] if navdata.state in self.StatusMessages else self.UnknownMessage
+		self.statusMessage = '{} (Battery: {}%)'.format(msg,int(navdata.batteryPercent))
+
+		self.tagLock.acquire()
+		try:
+			if navdata.tags_count > 0:
+				self.tags = [(navdata.tags_xc[i],navdata.tags_yc[i],navdata.tags_distance[i]) for i in range(0,navdata.tags_count)]
+			else:
+				self.tags = []
+		finally:
+			self.tagLock.release()
+
+		if self.following_mode == 1:
+			# Get tags
+			offsetFromCenter = 0
+			if len(self.tags) > 0:
+				self.tagLock.acquire()
+				try:
+					for (x,y,d) in self.tags:
+						offsetFromCenter = (900/2) - x
+					
+				finally:
+					self.tagLock.release()
+
+				# Set roll/pitch/yaw
+				if offsetFromCenter > 300:
+					self.roll = 1
+					#self.roll = 0
+				elif offsetFromCenter < -300:
+					self.roll = -1
+					#self.roll = 0
+				#elif navdata.tags_xc :
+				#	self.roll = 0
+				else:
+					self.roll = 0
+				rospy.logwarn("offset: {} roll: {}".format(offsetFromCenter, self.roll))
+			else:
+				self.roll = 0
+
+			# finally we set the command to be sent. The controller handles sending this at regular intervals
+			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
 
 # We add a keyboard handler to the DroneVideoDisplay to react to keypresses
 	def keyPressEvent(self, event):
@@ -55,6 +112,8 @@ class KeyboardController(DroneVideoDisplay):
 				controller.SendTakeoff()
 			elif key == KeyMapping.Land:
 				controller.SendLand()
+			
+
 			else:
 				# Now we handle moving, notice that this section is the opposite (+=) of the keyrelease section
 				if key == KeyMapping.YawLeft:
@@ -76,6 +135,9 @@ class KeyboardController(DroneVideoDisplay):
 					self.z_velocity += 1
 				elif key == KeyMapping.DecreaseAltitude:
 					self.z_velocity += -1
+
+				elif key == KeyMapping.FollowingMode:
+					self.following_mode = 1
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
@@ -107,6 +169,9 @@ class KeyboardController(DroneVideoDisplay):
 				self.z_velocity -= 1
 			elif key == KeyMapping.DecreaseAltitude:
 				self.z_velocity -= -1
+			elif key == KeyMapping.FollowingMode:
+				self.following_mode = 0
+				self.roll = 0
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)

@@ -12,6 +12,7 @@ install(PROGRAMS src/drone_controller.py
 		 src/drone_video_display.py  
 		 src/joystick_controller.py  
 		 src/keyboard_controller.py
+		 src/drone_cv.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
