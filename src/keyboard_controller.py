@@ -40,6 +40,20 @@ class KeyMapping(object):
         VisionMode       = QtCore.Qt.Key.Key_V
 
 
+class VideoController():
+	def __init__(self):
+		self.bridge = CvBridge()
+                self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImage)
+
+	def ReceiveImage(self,data):
+		try:
+			cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
+		except CvBridgeError as e:
+			print(e)
+		rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
+		cv.ShowImage("Image window", cv_image)
+		cv.WaitKey()
+
 # Our controller definition, note that we extend the DroneVideoDisplay class
 class KeyboardController(DroneVideoDisplay):
 	def __init__(self):
@@ -56,18 +70,17 @@ class KeyboardController(DroneVideoDisplay):
 
 		# Subscribe to the /ardrone/navdata topic, of message type navdata, and call self.ReceiveNavdata when a message is received
 		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata)     
-		#self.bridge = CvBridge()
-                #self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImage)
+		self.bridge = CvBridge()
+                self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImageData)
 
-	#def ReceiveImage(self,data):
-	#	try:
-	#		cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
-	#	except CvBridgeError as e:
-	#		print(e)
-	#	#height, width, channels = cv_image.width
-	#	rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
-	#	cv.ShowImage("Image window", cv_image)
-	#	cv.WaitKey(1)
+	def ReceiveImageData(self,data):
+		try:
+			cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
+		except CvBridgeError as e:
+			print(e)
+		rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
+		cv.ShowImage("Image window", cv_image)
+		cv.WaitKey()
 
 	def ReceiveNavdata(self,navdata):
 		# Indicate that new data has been received (thus we are connected)
@@ -222,8 +235,8 @@ if __name__=='__main__':
 	app = QtGui.QApplication(sys.argv)
 	controller = BasicDroneController()
 	display = KeyboardController()
-
 	display.show()
+        #video_controller = VideoController()
 
 	# executes the QT application
 	status = app.exec_()
