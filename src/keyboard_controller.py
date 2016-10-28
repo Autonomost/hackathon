@@ -19,7 +19,8 @@ from threading import Lock
 
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from cv_bridge import CvBridge, CvBridgeError
-import cv2	
+from sensor_msgs.msg import Image
+import cv	
 
 
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
@@ -54,7 +55,19 @@ class KeyboardController(DroneVideoDisplay):
 		self.tagLock = Lock()
 
 		# Subscribe to the /ardrone/navdata topic, of message type navdata, and call self.ReceiveNavdata when a message is received
-		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata) 
+		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata)     
+		#self.bridge = CvBridge()
+                #self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImage)
+
+	#def ReceiveImage(self,data):
+	#	try:
+	#		cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
+	#	except CvBridgeError as e:
+	#		print(e)
+	#	#height, width, channels = cv_image.width
+	#	rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
+	#	cv.ShowImage("Image window", cv_image)
+	#	cv.WaitKey(1)
 
 	def ReceiveNavdata(self,navdata):
 		# Indicate that new data has been received (thus we are connected)
