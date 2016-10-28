@@ -40,20 +40,6 @@ class KeyMapping(object):
         VisionMode       = QtCore.Qt.Key.Key_V
 
 
-class VideoController():
-	def __init__(self):
-		self.bridge = CvBridge()
-                self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImage)
-
-	def ReceiveImage(self,data):
-		try:
-			cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
-		except CvBridgeError as e:
-			print(e)
-		rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
-		cv.ShowImage("Image window", cv_image)
-		cv.WaitKey()
-
 # Our controller definition, note that we extend the DroneVideoDisplay class
 class KeyboardController(DroneVideoDisplay):
 	def __init__(self):
@@ -71,7 +57,7 @@ class KeyboardController(DroneVideoDisplay):
 		# Subscribe to the /ardrone/navdata topic, of message type navdata, and call self.ReceiveNavdata when a message is received
 		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata)     
 		self.bridge = CvBridge()
-                self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImageData)
+		self.image_sub = None
 
 	def ReceiveImageData(self,data):
 		try:
@@ -79,8 +65,10 @@ class KeyboardController(DroneVideoDisplay):
 		except CvBridgeError as e:
 			print(e)
 		rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
-		cv.ShowImage("Image window", cv_image)
-		cv.WaitKey()
+   
+                # Note: This is broken for some reason. It just hangs after displaying one image.
+		#cv.ShowImage("Image window", cv_image)
+		#cv.WaitKey(1)
 
 	def ReceiveNavdata(self,navdata):
 		# Indicate that new data has been received (thus we are connected)
@@ -180,6 +168,8 @@ class KeyboardController(DroneVideoDisplay):
 					self.following_mode = 1
 
 				elif key == KeyMapping.VisionMode:
+					if self.image_sub is None:
+	                			self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImageData)
 					self.vision_mode = 1
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
