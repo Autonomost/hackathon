@@ -18,6 +18,9 @@ from PySide import QtCore, QtGui
 from threading import Lock
 
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
+from cv_bridge import CvBridge, CvBridgeError
+import cv2	
+
 
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
 class KeyMapping(object):
@@ -33,6 +36,7 @@ class KeyMapping(object):
 	Land             = QtCore.Qt.Key.Key_H
 	Emergency        = QtCore.Qt.Key.Key_Space
 	FollowingMode    = QtCore.Qt.Key.Key_T
+        VisionMode       = QtCore.Qt.Key.Key_V
 
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
@@ -82,19 +86,29 @@ class KeyboardController(DroneVideoDisplay):
 					self.tagLock.release()
 
 				# Set roll/pitch/yaw
-				if offsetFromCenter > 300:
+				if offsetFromCenter > 200:
 					self.roll = 1
 					#self.roll = 0
-				elif offsetFromCenter < -300:
+				elif offsetFromCenter < -200:
 					self.roll = -1
 					#self.roll = 0
-				#elif navdata.tags_xc :
-				#	self.roll = 0
+				elif d > 350 :
+					self.pitch = 1
+				elif d < 200 :
+					self.pitch = -1
+				elif y > 500 :
+					self.z_velocity = -1
+				elif y < 300 :
+					self.z_velocity = 1
 				else:
 					self.roll = 0
-				rospy.logwarn("offset: {} roll: {}".format(offsetFromCenter, self.roll))
+					self.pitch = 0
+					self.z_velocity = 0
+				rospy.logwarn("offset: {} roll: {} x: {} y:{} d:{}".format(offsetFromCenter, self.roll,x,y,d))
 			else:
 				self.roll = 0
+				self.pitch = 0
+				self.z_velocity = 0
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
@@ -139,6 +153,9 @@ class KeyboardController(DroneVideoDisplay):
 				elif key == KeyMapping.FollowingMode:
 					self.following_mode = 1
 
+				elif key == KeyMapping.VisionMode:
+					self.vision_mode = 1
+
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
 
@@ -172,6 +189,10 @@ class KeyboardController(DroneVideoDisplay):
 			elif key == KeyMapping.FollowingMode:
 				self.following_mode = 0
 				self.roll = 0
+				self.pitch = 0
+				self.z_velocity = 0
+			elif key == KeyMapping.VisionMode:
+				self.vision_mode = 0
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
