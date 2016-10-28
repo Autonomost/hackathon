@@ -20,7 +20,9 @@ from threading import Lock
 from ardrone_autonomy.msg import Navdata # for receiving navdata feedback
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-import cv	
+import numpy
+import cv
+import cv2	
 
 
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
@@ -67,6 +69,8 @@ class KeyboardController(DroneVideoDisplay):
 		rospy.logwarn("Received image size {} x {}".format(cv_image.width, cv_image.height))
    
                 # Note: This is broken for some reason. It just hangs after displaying one image.
+                cv2_image = array = numpy.array( cv_image )
+		cv2.imshow("Image window", cv2_image)
 		#cv.ShowImage("Image window", cv_image)
 		#cv.WaitKey(1)
 
@@ -226,7 +230,6 @@ if __name__=='__main__':
 	controller = BasicDroneController()
 	display = KeyboardController()
 	display.show()
-        #video_controller = VideoController()
 
 	# executes the QT application
 	status = app.exec_()
