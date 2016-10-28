@@ -60,6 +60,8 @@ class KeyboardController(DroneVideoDisplay):
 		self.subNavdata = rospy.Subscriber('/ardrone/navdata',Navdata,self.ReceiveNavdata)     
 		self.bridge = CvBridge()
 		self.image_sub = None
+		cv2.namedWindow("Image window")
+		cv2.startWindowThread()
 
 	def ReceiveImageData(self,data):
 		try:
@@ -71,8 +73,8 @@ class KeyboardController(DroneVideoDisplay):
                 # Note: This is broken for some reason. It just hangs after displaying one image.
                 cv2_image = array = numpy.array( cv_image )
 		cv2.imshow("Image window", cv2_image)
+		cv2.waitKey(1)
 		#cv.ShowImage("Image window", cv_image)
-		#cv.WaitKey(1)
 
 	def ReceiveNavdata(self,navdata):
 		# Indicate that new data has been received (thus we are connected)
@@ -172,8 +174,10 @@ class KeyboardController(DroneVideoDisplay):
 					self.following_mode = 1
 
 				elif key == KeyMapping.VisionMode:
-					if self.image_sub is None:
-	                			self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImageData)
+					#if self.image_sub is None:
+					rospy.logwarn("Subscribing")
+	                		self.image_sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.ReceiveImageData)
+					cv2.startWindowThread()
 					self.vision_mode = 1
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
@@ -212,6 +216,8 @@ class KeyboardController(DroneVideoDisplay):
 				self.pitch = 0
 				self.z_velocity = 0
 			elif key == KeyMapping.VisionMode:
+				rospy.logwarn("Unsubscribing")
+ 				self.image_sub.unregister()
 				self.vision_mode = 0
 
 			# finally we set the command to be sent. The controller handles sending this at regular intervals
