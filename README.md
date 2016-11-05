@@ -13,7 +13,11 @@ mv ardrone_tutorials ardrone_tutorials_orig
 
 # Clone repository
 git clone https://github.com/Autonomost/hackathon
+
 mv hackathon ardrone_tutorials 
+
 cd ardrone_tutorials
+
 source setpath.sh
+
 roslaunch ardrone_tutorials keyboard_controller_with_tags.launch
